@@ -19,7 +19,7 @@ for num in range(1,19):
     lower_r_2 = np.array([160, 100, 100])
     upper_r_2 = np.array([180, 255, 255])
 
-    #use mask to hide everything else tha red
+    #use mask to hide everything else than red
     mask = cv.inRange(hsv, lower_red, upper_red)
     mask2 = cv.inRange(hsv, lower_r_2, upper_r_2)
 
