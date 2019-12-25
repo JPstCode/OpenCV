@@ -3,7 +3,7 @@ import numpy as np
 from scipy.spatial import distance
 from matplotlib import pyplot as plt
 
-path = r'C:\Users\juhop\Documents\Python\OpenCV\Sudoku\sudokus\sudoku3.jpg'
+path = r'C:\Users\juhop\Documents\Python\OpenCV\Sudoku\sudokus\sudoku4.jpg'
 
 #Check that the received contour matches with grid features
 def grid_check(contours):
@@ -93,7 +93,10 @@ def grid_corners(cnt, minmax):
             if counter > 5 and close_flag:
                 break
 
-    return np.asanyarray((leftop, lefbot, rightbot, righttop))
+    return np.asanyarray((leftop, lefbot, righttop, rightbot))
+
+
+#def get_cells()
 
 if __name__ == '__main__':
 
@@ -128,14 +131,20 @@ if __name__ == '__main__':
 
     grid_contour, minmax = grid_check(big_contours)
     corner = grid_corners(grid_contour,minmax)
+    orig_corner = np.asanyarray(((0,0), (0, 500), (500, 0), (500,500)))
+
+    M = cv.getPerspectiveTransform(np.float32(corner), np.float32(orig_corner))
+    perspective = cv.warpPerspective(img, M, (500, 500))
 
 
     # Give every 3rd coordinate
     #cv.drawContours(color, grid_contour, -1, (255, 0, 0), 3)
 
     #x = np.arange(len(grid_contour[0]))
-    #plt.figure(2)
-    #plt.plot(x,grid_contour[0])
+    # plt.figure(2)
+    # plt.imshow(perspective)
+    # plt.figure(1)
+    # plt.imshow()
     #plt.show()
 
 
