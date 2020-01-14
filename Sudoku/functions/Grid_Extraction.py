@@ -120,44 +120,69 @@ def add_frame(img):
 
     return img
 
-def clear_grid(img,hor,ver):
+def extend_lines(hor,ver):
 
-    width = 8
     for line in hor:
 
-        y = line[1]
-        y2 = line[3]
+        if line[0] < 280:
+            line[0] = 0
+            line[2] = 540
 
-        if y < width:
-            low = 0
         else:
-            low = y - width
-        if y2 < width:
-            low2 = 0
-        else:
-            low2 = y2 - width
-
-        img[low:y+width,:] = 0
-        img[low2:y2+width,:] = 0
+            line[0] = 540
+            line[2] = 0
 
     for line in ver:
+        if line[1] < 280:
+            line[1] = 0
+            line[3] = 540
 
-        x = line[0]
-        x2 = line[2]
-
-        if x < width:
-            low = 0
         else:
-            low = x - width
-        if x2 < width:
-            low2 = 0
-        else:
-            low2 = x2 - width
+            line[1] = 540
+            line[3] = 0
 
-        img[:,low:x + width] = 0
-        img[:,low2:x2 + width] = 0
+    return hor, ver
 
-    return img
+def correct_coordinate(lines):
+
+    if len(lines[0]) == 4:
+
+        for line in lines:
+            line[1] = -line[1] + 540
+            line[3] = -line[3] + 540
+
+    else:
+        for point in lines:
+            point[1] = int((-point[1] + 540))
+            point[0] = int((point[0]))
+
+    return lines
+
+
+# Calculate the intersection coordinates of grid lines
+def get_intersections(hor,ver):
+
+    intersections = []
+    for index, h_line in enumerate(hor):
+        k_h = ((h_line[3]) - (h_line[1]))/(h_line[2] - h_line[0])
+        intersections.append([])
+
+        for v_line in ver:
+            k_v = ((v_line[3])-(v_line[1]))/(v_line[2]-v_line[0])
+
+            if np.isinf(k_v):
+                x = v_line[0]
+            else:
+                x = (k_h*h_line[0] - k_v*v_line[0] + v_line[1] - h_line[1]) / (k_h - k_v)
+
+            if k_h == 0:
+                y = h_line[1]
+            else:
+                y = k_h*x - k_h*h_line[0] + h_line[1]
+
+            intersections[index].append([int(x),int(y)])
+
+    return intersections
 
 
 
@@ -224,19 +249,46 @@ def get_cells(img, color):
 
         prev_coord = l[0]
 
+    cleared_hor, cleared_ver = extend_lines(cleared_hor,cleared_ver)
+
+    if len(cleared_hor) != 10 or len(cleared_ver) != 10:
+        return None
+    else:
+        intersections = get_intersections(cleared_hor, cleared_ver)
+
+    cells = []
+    for row in range(0,9):
+        for coord in range(0,9):
+            x = intersections[row][coord][0]
+            y = intersections[row][coord][1]
+            w = intersections[row][coord+1][0]
+            h = intersections[row + 1][coord][1]
+            cell = thres[y+8:h-8,x+8:w-8]
+
+            plt.figure(1)
+            plt.imshow(cell,'gray')
+            plt.show()
+
+    # for intersect in intersections:
+    #     cv.circle(color,(intersect[0],intersect[1]),5,(0,255,0),2)
+    #
+    #
+    # plt.figure(1)
+    # plt.imshow(color)
+    # plt.show()
 
 
+    #Clean grid Dont know if necessary
     for l in cleared_hor:
         cv.line(color, (l[0], l[1]), (l[2], l[3]), (0,0,255), 3, cv.LINE_AA)
+        cv.line(thres, (l[0], l[1]), (l[2], l[3]), 0, 10, cv.LINE_AA)
 
     for l in cleared_ver:
         cv.line(color, (l[0], l[1]), (l[2], l[3]), (255,0,0), 3, cv.LINE_AA)
-
-    thres = clear_grid(thres,cleared_hor,cleared_ver)
+        cv.line(thres, (l[0], l[1]), (l[2], l[3]), 0, 10, cv.LINE_AA)
 
     plt.figure(1)
     plt.imshow(thres,'gray')
-    plt.show()
 
     print(len(cleared_hor))
     print(len(cleared_ver))
@@ -245,7 +297,7 @@ def get_cells(img, color):
     #plt.figure(2)
     #plt.imshow(canny,'gray')
 
-    plt.figure(1)
+    plt.figure(2)
     plt.imshow(color)
     plt.show()
 
@@ -294,8 +346,7 @@ def get_cells(img, color):
 
 if __name__ == '__main__':
 
-    path = r'C:\Users\juhop\Documents\Python\OpenCV\Sudoku\sudokus\sudoku4.jpg'
-
+    path = r'C:\Users\juhop\Documents\Python\OpenCV\Sudoku\sudokus\sudoku3.jpg'
     color = cv.imread(path,1)
     img = cv.cvtColor(color,cv.COLOR_BGR2GRAY)
     blurred = cv.blur(img, (3, 3))
