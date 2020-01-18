@@ -9,6 +9,9 @@ from functions.Grid_Extraction import grid_check
 from functions.Grid_Extraction import grid_corners
 from functions.Grid_Extraction import get_cells
 
+from functions.solver import combine_sudoku
+from functions.solver import solve
+
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
@@ -107,8 +110,8 @@ def start_webcam():
         #_, thres = cv.threshold(blurred, threshold, 255, cv.THRESH_BINARY_INV)
         thres = cv.adaptiveThreshold(blurred, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 9, 2)
 
-        #cv.imshow('frame',frame)
-        cv.imshow('thres',thres)
+        cv.imshow('frame',frame)
+        #cv.imshow('thres',thres)
 
         # cv.imshow('thres', thres)
         corner,big_contours = grid_find(thres)
@@ -129,7 +132,7 @@ def start_webcam():
             #cv.imshow('huut',perspective)
 
             #perspective_color = cv.warpPerspective(color, M, (540, 540))
-            cell_pics, cell_pos, intersections, thres_trans = get_cells(perspective, None)
+            cell_pics, cell_pos, intersections, empty_cells = get_cells(perspective, None)
             blank = np.zeros((540,540,3),dtype='uint8')
             if len(cell_pics) != 0 and len(cell_pos) != 0:
 
@@ -164,16 +167,33 @@ def start_webcam():
                 #cv.destroyAllWindows()
 
                 if len(final_predictions) != 0:
-                    for index,prediction in enumerate(final_predictions):
-                        cell_location = cell_pos[index]
 
+                    # # Prediction Projection
+                    # for index,prediction in enumerate(final_predictions):
+                    #     cell_location = cell_pos[index]
+                    #
+                    #     intersection_point = np.asanyarray(
+                    #         (intersections[cell_location[0]][cell_location[1]][0],
+                    #         intersections[cell_location[0]][cell_location[1]][1]))
+                    #
+                    #     location = (int(intersection_point[0]+15),int(intersection_point[1]+50))
+                    #
+                    #     cv.putText(blank, str(prediction), location, font, 2, (0,255,0), 2, cv.FILLED)
+
+                    sudoku = combine_sudoku(cell_pos, final_predictions)
+                    solve(sudoku)
+
+                    for row,location in empty_cells:
+
+                        solved_number = sudoku[row][location]
                         intersection_point = np.asanyarray(
-                            (intersections[cell_location[0]][cell_location[1]][0],
-                            intersections[cell_location[0]][cell_location[1]][1]))
+                            (intersections[row][location][0],
+                            intersections[row][location][1]))
 
-                        location = (int(intersection_point[0]+15),int(intersection_point[1]+50))
+                        num_location = (int(intersection_point[0]+15),int(intersection_point[1]+50))
 
-                        cv.putText(blank, str(prediction), location, font, 2, (0,255,0), 2, cv.FILLED)
+                        cv.putText(blank, str(solved_number), num_location, font, 2, (0,255,0), 2, cv.FILLED)
+
 
                     M_Inv = cv.getPerspectiveTransform(np.float32(orig_corner), np.float32(corner))
                     perspective_inv = cv.warpPerspective(blank, M_Inv, (640, 480))
@@ -187,14 +207,14 @@ def start_webcam():
                                 pixel[1] = 255
                                 pixel[2] = 0
 
-
-                    plt.figure(1)
-                    plt.imshow(perspective_inv)
-
-                    plt.figure(2)
-                    plt.imshow(frame)
-
-                    plt.show()
+                    cv.imshow('frame', frame)
+                    # plt.figure(1)
+                    # plt.imshow(perspective_inv)
+                    #
+                    # plt.figure(2)
+                    # plt.imshow(frame)
+                    #
+                    # plt.show()
 
                 else:
                     pass

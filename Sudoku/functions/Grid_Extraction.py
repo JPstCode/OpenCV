@@ -270,6 +270,7 @@ def get_cells(img, color):
 
             cell_pos = []
             cell_pics = []
+            empty_cells = []
 
             for row in range(0,9):
                 for coord in range(0,9):
@@ -280,6 +281,7 @@ def get_cells(img, color):
                     cell = thres[y+8:h-8,x+8:w-8]
 
                     if np.sum(cell) < 20000:
+                        empty_cells.append((row,coord))
                         continue
                     else:
 
@@ -304,7 +306,7 @@ def get_cells(img, color):
             #filename = r'stest{}'.format(sudoku)
             #np.save(filename,train_cells)
             if len(cell_pos) != 0 and len(cell_pics) != 0:
-                return np.asanyarray(cell_pics), cell_pos, intersections, thres
+                return np.asanyarray(cell_pics), cell_pos, intersections, empty_cells
 
             else:
                 return [],[],[],[]
