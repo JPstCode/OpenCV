@@ -2,15 +2,15 @@ import cv2 as cv
 import numpy as np
 from scipy.spatial import distance
 from matplotlib import pyplot as plt
-import math
+
+sudoku = '4'
+
 
 def takeSecond(hor):
     return hor[1]
 
 def takeFirst(ver):
     return ver[0]
-
-
 
 #Check that the received contour matches with grid features
 def grid_check(contours):
@@ -75,7 +75,7 @@ def grid_corners(cnt, minmax):
 
 
     for corner_number,point in enumerate(ref_points):
-        prev_dst = 100
+        prev_dst = 80
 
         for cnt_point in cnt[0]:
             dst = distance.euclidean(cnt_point, point)
@@ -95,20 +95,21 @@ def grid_corners(cnt, minmax):
 
                 prev_dst = dst
 
-    corners = np.asanyarray((leftop, lefbot, righttop, rightbot))
+    if np.sum(leftop) == 0 or np.sum(lefbot) == 0 or np.sum(rightbot) == 0 or np.sum(righttop) == 0:
+        return []
+    else:
+        corners = np.asanyarray((leftop, lefbot, righttop, rightbot))
 
-    #Drav corner points
-    for index,cor in enumerate(corners):
-        cv.circle(color,ref_points[index],5,(0,0,255),3)
-        cv.circle(color,tuple(cor),5,(0,255,0),3)
+        # Drav corner points
+        # for index, cor in enumerate(corners):
+        #     cv.circle(color, ref_points[index], 5, (0, 0, 255), 3)
+        #     cv.circle(color, tuple(cor), 5, (0, 255, 0), 3)
+        #
+        # plt.figure()
+        # plt.imshow(color)
+        # plt.show()
 
-    plt.figure()
-    plt.imshow(color)
-    plt.show()
-
-
-    return corners
-
+        return corners
 
 
 def add_frame(img):
@@ -196,157 +197,126 @@ def get_cells(img, color):
 
     # Add 'frame' to extract all lines
     thres = add_frame(thres)
-
     linesP = cv.HoughLinesP(thres, 1, np.pi/180, 150, None, 400, 200)
+
+
+    # plt.figure(2)
+    # plt.imshow(thres,'gray')
+    # plt.show()
 
     # Sort to horisontal and vertical lines
     hor = []
     ver = []
-    if linesP is not None:
-        for i in range(0, len(linesP)):
-            l = linesP[i][0]
+    try:
+        if len(linesP) != 0:
+            for i in range(0, len(linesP)):
+                l = linesP[i][0]
 
-            dx = abs(l[0] - l[2])
-            dy = abs(l[1] - l[3])
-            if dx < dy:
-                ver.append(l)
+                dx = abs(l[0] - l[2])
+                dy = abs(l[1] - l[3])
+                if dx < dy:
+                    ver.append(l)
+                else:
+                    hor.append(l)
+
+            # Remove duplicates
+            hor.sort(key=takeSecond)
+            ver.sort(key=takeFirst)
+
+            cleared_hor = []
+            cleared_ver = []
+
+            prev_coord = 0
+            for l in hor:
+
+                if len(cleared_hor) == 0:
+                    cleared_hor.append(l)
+                else:
+                    dy = abs(l[1] - prev_coord)
+
+                    if dy < 15:
+                        continue
+                    else:
+                        cleared_hor.append(l)
+
+                prev_coord = l[1]
+
+            for l in ver:
+
+                if len(cleared_ver) == 0:
+                    cleared_ver.append(l)
+                else:
+                    dy = abs(l[0] - prev_coord)
+
+                    if dy < 15:
+                        continue
+                    else:
+                        cleared_ver.append(l)
+
+                prev_coord = l[0]
+
+            cleared_hor, cleared_ver = extend_lines(cleared_hor,cleared_ver)
+
+            if len(cleared_hor) != 10 or len(cleared_ver) != 10:
+                return [],[],[],[]
             else:
-                hor.append(l)
 
-    # Remove duplicates
-    hor.sort(key=takeSecond)
-    ver.sort(key=takeFirst)
+                #plt.figure(1)
+                #plt.imshow(thres,'gray')
+                #plt.show()
 
-    cleared_hor = []
-    cleared_ver = []
 
-    prev_coord = 0
-    for l in hor:
+                intersections = get_intersections(cleared_hor, cleared_ver)
 
-        if len(cleared_hor) == 0:
-            cleared_hor.append(l)
+            cell_pos = []
+            cell_pics = []
+
+            for row in range(0,9):
+                for coord in range(0,9):
+                    x = intersections[row][coord][0]
+                    y = intersections[row][coord][1]
+                    w = intersections[row][coord+1][0]
+                    h = intersections[row + 1][coord][1]
+                    cell = thres[y+8:h-8,x+8:w-8]
+
+                    if np.sum(cell) < 20000:
+                        continue
+                    else:
+
+                        # plt.figure(1)
+                        # plt.imshow(cell,'gray')
+
+                        cell = cv.resize(cell, (45,45),interpolation=cv.INTER_NEAREST)
+
+                        # plt.figure(2)
+                        # plt.imshow(cell,'gray')
+                        # plt.show()
+
+
+                        #cell_pics[row][coord].append(cell)
+                        cell = np.reshape(cell,(45,45,1))
+                        cell_pics.append(cell)
+                        cell_pos.append((row,coord))
+
+
+
+            #train_cells = np.asanyarray(cell_pics)
+            #filename = r'stest{}'.format(sudoku)
+            #np.save(filename,train_cells)
+            if len(cell_pos) != 0 and len(cell_pics) != 0:
+                return np.asanyarray(cell_pics), cell_pos, intersections, thres
+
+            else:
+                return [],[],[],[]
         else:
-            dy = abs(l[1] - prev_coord)
+            return [], [], [],[]
 
-            if dy < 10:
-                continue
-            else:
-                cleared_hor.append(l)
-
-        prev_coord = l[1]
-
-    for l in ver:
-
-        if len(cleared_ver) == 0:
-            cleared_ver.append(l)
-        else:
-            dy = abs(l[0] - prev_coord)
-
-            if dy < 10:
-                continue
-            else:
-                cleared_ver.append(l)
-
-        prev_coord = l[0]
-
-    cleared_hor, cleared_ver = extend_lines(cleared_hor,cleared_ver)
-
-    if len(cleared_hor) != 10 or len(cleared_ver) != 10:
-        return None
-    else:
-        intersections = get_intersections(cleared_hor, cleared_ver)
-
-    cells = []
-    for row in range(0,9):
-        for coord in range(0,9):
-            x = intersections[row][coord][0]
-            y = intersections[row][coord][1]
-            w = intersections[row][coord+1][0]
-            h = intersections[row + 1][coord][1]
-            cell = thres[y+8:h-8,x+8:w-8]
-
-            plt.figure(1)
-            plt.imshow(cell,'gray')
-            plt.show()
-
-    # for intersect in intersections:
-    #     cv.circle(color,(intersect[0],intersect[1]),5,(0,255,0),2)
-    #
-    #
-    # plt.figure(1)
-    # plt.imshow(color)
-    # plt.show()
-
-
-    #Clean grid Dont know if necessary
-    for l in cleared_hor:
-        cv.line(color, (l[0], l[1]), (l[2], l[3]), (0,0,255), 3, cv.LINE_AA)
-        cv.line(thres, (l[0], l[1]), (l[2], l[3]), 0, 10, cv.LINE_AA)
-
-    for l in cleared_ver:
-        cv.line(color, (l[0], l[1]), (l[2], l[3]), (255,0,0), 3, cv.LINE_AA)
-        cv.line(thres, (l[0], l[1]), (l[2], l[3]), 0, 10, cv.LINE_AA)
-
-    plt.figure(1)
-    plt.imshow(thres,'gray')
-
-    print(len(cleared_hor))
-    print(len(cleared_ver))
-
-
-    #plt.figure(2)
-    #plt.imshow(canny,'gray')
-
-    plt.figure(2)
-    plt.imshow(color)
-    plt.show()
-
-
-    cells = []
-    counter = 0
-    for i in range(0,9):
-        cells.append([])
-        for j in range(0,9):
-
-            x1 = i*60
-            x2 = (i+1)*60
-            y1 = j*60
-            y2 = (j+1)*60
-
-            cell = cv.resize(thres[x1:x2,y1:y2], (20,20),interpolation=cv.INTER_LINEAR_EXACT)
-            cell_color = cv.cvtColor(cell,cv.COLOR_GRAY2BGR)
-
-            contours,_ = cv.findContours(cell,cv.RETR_TREE,cv.CHAIN_APPROX_SIMPLE)
-            cv.drawContours(cell_color, contours, -1, (255, 0, 0), 1)
-
-
-#            Show individual celss
-            print(np.sum(cell))
-            plt.figure(1)
-            plt.imshow(cell,'gray')
-
-            plt.figure(2)
-            plt.imshow(cell_color)
-            plt.show()
-
-            if np.sum(cell) > 2000:
-                counter = counter + 1
-                cells[i].append(cell)
-
-    cells = np.asanyarray(cells)
-    print(counter)
-
-    np.save('s6',cells)
-
-    return cells
-
-
-
-#4 was off
+    except TypeError:
+        return [],[],[],[]
 
 if __name__ == '__main__':
 
-    path = r'C:\Users\juhop\Documents\Python\OpenCV\Sudoku\sudokus\sudoku3.jpg'
+    path = r'C:\Users\juhop\Documents\Python\OpenCV\Sudoku\sudokus\pics\test{}.jpg'.format(sudoku)
     color = cv.imread(path,1)
     img = cv.cvtColor(color,cv.COLOR_BGR2GRAY)
     blurred = cv.blur(img, (3, 3))
@@ -357,12 +327,13 @@ if __name__ == '__main__':
     thres_pixels = 0
     threshold = 0
 
-    hist_ratios = np.arange(0.12,0.5,0.03)
+    hist_ratios = np.arange(0.12,0.8,0.03)
     contour_iter = 0
+    corner = []
     grid_contour = []
     minmax = []
 
-    while len(grid_contour) == 0:
+    while len(corner) == 0:
 
         hist = cv.calcHist([blurred], [0], None, [256], [0, 256])
 
@@ -383,12 +354,16 @@ if __name__ == '__main__':
 
         big_contours = []
         for contour in contours:
-            #print(cv.contourArea((contour)))
+            # print(cv.contourArea((contour)))
             if cv.contourArea(contour) > 100000:
-
+                #
                 # cv.drawContours(color, [contour], -1, (255, 0, 0), 3)
-                # plt.figure()
+                # plt.figure(1)
+                # plt.imshow(thres,'gray')
+                #
+                # plt.figure(2)
                 # plt.imshow(color)
+                #
                 # plt.show()
 
                 big_contours.append(contour)
@@ -396,21 +371,29 @@ if __name__ == '__main__':
 
         grid_contour, minmax = grid_check(big_contours)
 
+        if len(grid_contour) != 0:
+            corner = grid_corners(grid_contour, minmax)
+
         contour_iter = contour_iter + 1
         thres_pixels = 0
         threshold = 0
 
-    # Give every 3rd coordinate
-    cv.drawContours(color, grid_contour, -1, (255, 0, 0), 3)
+    # cv.drawContours(color, grid_contour, -1, (255, 0, 0), 3)
 
-    corner = grid_corners(grid_contour,minmax)
     orig_corner = np.asanyarray(((0,0), (0, 540), (540, 0), (540,540)))
 
     M = cv.getPerspectiveTransform(np.float32(corner), np.float32(orig_corner))
     perspective = cv.warpPerspective(img, M, (540, 540))
 
     perspective_color = cv.warpPerspective(color,M,(540,540))
-    cells = get_cells(perspective,perspective_color)
+    cell_pics, cell_labels,_ = get_cells(perspective,perspective_color)
+
+
+    plt.figure(1)
+    plt.imshow(perspective, 'gray')
+    plt.show()
+
+    print("asd")
 
     # Give every 3rd coordinate
     #cv.drawContours(color, grid_contour, -1, (255, 0, 0), 3)
