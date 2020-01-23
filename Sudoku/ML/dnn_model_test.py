@@ -24,23 +24,23 @@ ADAM = load_model('ADAM_model.h5')
 
 font = cv.FONT_HERSHEY_SIMPLEX
 
-orig_corner = np.asanyarray(((0, 0), (0, 540), (540, 0), (540, 540)))
+orig_corners = np.asanyarray(((0, 0), (0, 540), (540, 0), (540, 540)))
 
-def load_data():
-
-    img_path = r'C:\Users\juhop\Documents\Python\OpenCV\Sudoku\ML\test_files\stest{}.npy'.format(testset)
-    label_path = r'C:\Users\juhop\Documents\Python\OpenCV\Sudoku\ML\test_files\test_label{}.csv'.format(testset)
-
-    labels = []
-    with open(label_path) as csv_file:
-        csv_reader = csv.reader(csv_file, delimiter=',')
-        for row in csv_reader:
-            for number in row:
-                labels.append(int(number))
-
-    imgs = np.reshape(np.load(img_path),(-1,45,45,1))
-
-    return imgs, labels
+# def load_data():
+#
+#     img_path = r'C:\Users\juhop\Documents\Python\OpenCV\Sudoku\ML\test_files\stest{}.npy'.format(testset)
+#     label_path = r'C:\Users\juhop\Documents\Python\OpenCV\Sudoku\ML\test_files\test_label{}.csv'.format(testset)
+#
+#     labels = []
+#     with open(label_path) as csv_file:
+#         csv_reader = csv.reader(csv_file, delimiter=',')
+#         for row in csv_reader:
+#             for number in row:
+#                 labels.append(int(number))
+#
+#     imgs = np.reshape(np.load(img_path),(-1,45,45,1))
+#
+#     return imgs, labels
 
 def grid_find(thres):
 
@@ -50,7 +50,7 @@ def grid_find(thres):
 
     big_contours = []
     for contour in contours:
-        if cv.contourArea(contour) > 100000:
+        if cv.contourArea(contour) > 80000:
             big_contours.append(contour)
 
     grid_contour, minmax = grid_check(big_contours)
@@ -59,9 +59,9 @@ def grid_find(thres):
         corner = grid_corners(grid_contour, minmax)
 
     if len(corner) == 4:
-        return corner,[]
+        return corner
     else:
-        return [],[]
+        return []
 
 
 def predict_number(cell_pics):
@@ -101,7 +101,7 @@ def draw_numbers(empty_cells, sudoku, intersections, frame, corner):
 
         cv.putText(blank, str(solved_number), num_location, font, 2, (0, 255, 0), 2, cv.FILLED)
 
-    M_Inv = cv.getPerspectiveTransform(np.float32(orig_corner), np.float32(corner))
+    M_Inv = cv.getPerspectiveTransform(np.float32(orig_corners), np.float32(corner))
     perspective_inv = cv.warpPerspective(blank, M_Inv, (1024, 768))
 
     for i, row in enumerate(frame):
@@ -117,13 +117,12 @@ def draw_numbers(empty_cells, sudoku, intersections, frame, corner):
 
 def start_webcam():
 
-    # Open webcam
+    # Open webcam and set height and width for frame
     cap = cv.VideoCapture(0)
     cap.set(cv.CAP_PROP_FRAME_WIDTH, 1024)
     cap.set(cv.CAP_PROP_FRAME_HEIGHT, 768)
 
-
-
+    # Variables for comparing two consequtive sudokus
     previous_positions = [(100,100)]
     prev_sudoku = []
 
@@ -135,44 +134,58 @@ def start_webcam():
         if not ret:
             break
 
+        cv.imshow('frame',frame)
+
+        # Pre-process frame
         gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
         blurred = cv.GaussianBlur(gray,(9,9),0)
         thres = cv.adaptiveThreshold(blurred, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 9, 2)
 
+        # cv.imshow('thres', thres)
+        # Find grid corners
+        corners = grid_find(thres)
 
-        cv.imshow('frame',frame)
-        corner,big_contours = grid_find(thres)
+        # Check that all four corners are found
+        if len(corners) == 4:
 
-
-        if len(corner) == 4:
-
-            M = cv.getPerspectiveTransform(np.float32(corner), np.float32(orig_corner))
+            # Crop grid for cell extraction
+            M = cv.getPerspectiveTransform(np.float32(corners), np.float32(orig_corners))
             perspective = cv.warpPerspective(gray, M, (540, 540))
 
             cell_pics, cell_pos, intersections, empty_cells = get_cells(perspective, None)
 
+            # If two consequtive sudokus are indentical, no need for another solving
             if cell_pos == previous_positions:
-                frame = draw_numbers(empty_cells, prev_sudoku, intersections, frame, corner)
+
+                # Draw solution to frame
+                frame = draw_numbers(empty_cells, prev_sudoku, intersections, frame, corners)
                 cv.imshow('frame', frame)
 
             else:
 
                 if len(cell_pics) != 0 and len(cell_pos) != 0:
 
+                    # Classify numbers
                     final_predictions = predict_number(cell_pics)
-
-
+                    # print(final_predictions)
                     if len(final_predictions) != 0:
 
+                        # Prepare sudoku for solving algorithm
                         sudoku = combine_sudoku(cell_pos, final_predictions)
+
+                        # Use backtracking algorithm to solve puzzle
                         solve(sudoku)
 
                         if 0 not in sudoku[0] and 0 not in sudoku[1]:
 
-                            frame = draw_numbers(empty_cells, sudoku, intersections, frame, corner)
-                            cv.imshow('frame', frame)
+                            # Draw solution to frame
+                            frame = draw_numbers(empty_cells, sudoku, intersections, frame, corners)
+
+                            # Store sudoku and positions to compare consequtive sudokus
                             previous_positions = cell_pos
                             prev_sudoku = sudoku
+
+                            cv.imshow('frame', frame)
 
                     else:
                         pass
