@@ -26,6 +26,9 @@ font = cv.FONT_HERSHEY_SIMPLEX
 
 orig_corners = np.asanyarray(((0, 0), (0, 540), (540, 0), (540, 540)))
 
+widht = 640
+height = 480
+
 # def load_data():
 #
 #     img_path = r'C:\Users\juhop\Documents\Python\OpenCV\Sudoku\ML\test_files\stest{}.npy'.format(testset)
@@ -50,7 +53,7 @@ def grid_find(thres):
 
     big_contours = []
     for contour in contours:
-        if cv.contourArea(contour) > 80000:
+        if cv.contourArea(contour) > 50000:
             big_contours.append(contour)
 
     grid_contour, minmax = grid_check(big_contours)
@@ -102,15 +105,18 @@ def draw_numbers(empty_cells, sudoku, intersections, frame, corner):
         cv.putText(blank, str(solved_number), num_location, font, 2, (255), 2, cv.FILLED)
 
     M_Inv = cv.getPerspectiveTransform(np.float32(orig_corners), np.float32(corner))
-    perspective_inv = cv.warpPerspective(blank, M_Inv, (1024, 768))
+    perspective_inv = cv.warpPerspective(blank, M_Inv, (widht, height))
 
     for i, row in enumerate(frame):
-        for j, pixel in enumerate(row):
-            pers_green = perspective_inv[i][j]
-            if pers_green > 0:
-                pixel[0] = 0
-                pixel[1] = 255
-                pixel[2] = 0
+        if np.sum(row) == 0:
+            continue
+        else:
+            for j, pixel in enumerate(row):
+                pers_green = perspective_inv[i][j]
+                if pers_green > 0:
+                    pixel[0] = 0
+                    pixel[1] = 255
+                    pixel[2] = 0
 
     return frame
 
@@ -119,8 +125,6 @@ def start_webcam():
 
     # Open webcam and set height and width for frame
     cap = cv.VideoCapture(0)
-    cap.set(cv.CAP_PROP_FRAME_WIDTH, 1024)
-    cap.set(cv.CAP_PROP_FRAME_HEIGHT, 768)
 
     # Variables for comparing two consequtive sudokus
     previous_positions = [(100,100)]
