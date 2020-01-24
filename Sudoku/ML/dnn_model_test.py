@@ -90,7 +90,7 @@ def predict_number(cell_pics):
 
 def draw_numbers(empty_cells, sudoku, intersections, frame, corner):
 
-    blank = np.zeros((540, 540, 3), dtype='uint8')
+    blank = np.zeros((540, 540), dtype='uint8')
     for row, location in empty_cells:
         solved_number = sudoku[row][location]
         intersection_point = np.asanyarray(
@@ -99,14 +99,14 @@ def draw_numbers(empty_cells, sudoku, intersections, frame, corner):
 
         num_location = (int(intersection_point[0] + 15), int(intersection_point[1] + 50))
 
-        cv.putText(blank, str(solved_number), num_location, font, 2, (0, 255, 0), 2, cv.FILLED)
+        cv.putText(blank, str(solved_number), num_location, font, 2, (255), 2, cv.FILLED)
 
     M_Inv = cv.getPerspectiveTransform(np.float32(orig_corners), np.float32(corner))
     perspective_inv = cv.warpPerspective(blank, M_Inv, (1024, 768))
 
     for i, row in enumerate(frame):
         for j, pixel in enumerate(row):
-            pers_green = perspective_inv[i][j][1]
+            pers_green = perspective_inv[i][j]
             if pers_green > 0:
                 pixel[0] = 0
                 pixel[1] = 255
