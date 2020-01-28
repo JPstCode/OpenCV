@@ -44,20 +44,6 @@ def grid_check(contours):
         return np.asanyarray(grid), np.asanyarray(minmax)
 
 
-# def histogram_equalization(img):
-#
-#     hist, bins = np.histogram(img.flatten(), 256, [0, 256])
-#
-#     cdf = hist.cumsum()
-#     cdf_m = np.ma.masked_equal(cdf, 0)
-#     cdf_m = (cdf_m - cdf_m.min()) * 255 / (cdf_m.max() - cdf_m.min())
-#     cdf = np.ma.filled(cdf_m, 0).astype('uint8')
-#
-#     img2 = cdf[img]
-#
-#     return img2
-
-
 def grid_corners(cnt, minmax):
 
     min_x = minmax[0][0]
@@ -261,11 +247,6 @@ def get_cells(img, color):
                 return [],[],[],[]
             else:
 
-                #plt.figure(1)
-                #plt.imshow(thres,'gray')
-                #plt.show()
-
-
                 intersections = get_intersections(cleared_hor, cleared_ver)
 
             cell_pos = []
@@ -285,26 +266,24 @@ def get_cells(img, color):
                         continue
                     else:
 
-                        # plt.figure(1)
-                        # plt.imshow(cell,'gray')
+
 
                         cell = cv.resize(cell, (45,45),interpolation=cv.INTER_NEAREST)
 
-                        # plt.figure(2)
-                        # plt.imshow(cell,'gray')
-                        # plt.show()
-
-
+                        # For Gathering Training data
                         #cell_pics[row][coord].append(cell)
+
                         cell = np.reshape(cell,(45,45,1))
                         cell_pics.append(cell)
                         cell_pos.append((row,coord))
 
 
-
+            # For Training data gathering
             #train_cells = np.asanyarray(cell_pics)
             #filename = r'stest{}'.format(sudoku)
             #np.save(filename,train_cells)
+
+
             if len(cell_pos) != 0 and len(cell_pics) != 0:
                 return np.asanyarray(cell_pics), cell_pos, intersections, empty_cells
 
@@ -358,11 +337,9 @@ if __name__ == '__main__':
         for contour in contours:
             # print(cv.contourArea((contour)))
             if cv.contourArea(contour) > 100000:
-                #
+
+                # For Contour visualization
                 # cv.drawContours(color, [contour], -1, (255, 0, 0), 3)
-                # plt.figure(1)
-                # plt.imshow(thres,'gray')
-                #
                 # plt.figure(2)
                 # plt.imshow(color)
                 #
@@ -394,32 +371,4 @@ if __name__ == '__main__':
     plt.figure(1)
     plt.imshow(perspective, 'gray')
     plt.show()
-
-    print("asd")
-
-    # Give every 3rd coordinate
-    #cv.drawContours(color, grid_contour, -1, (255, 0, 0), 3)
-
-    #x = np.arange(len(grid_contour[0]))
-    # plt.figure(2)
-    # plt.imshow(perspective)
-    # plt.figure(1)
-    # plt.imshow()
-    # plt.show()
-
-
-    #plt.figure()
-    #plt.hist(area_hist,10)
-    #plt.show()
-
-
-    # plt.figure()
-    # plt.imshow(color)
-    # plt.show()
-
-    # plt.figure()
-    # plt.imshow(thres,'gray')
-    # plt.figure()
-    # plt.imshow(blurred,'gray')
-    #plt.show()
 

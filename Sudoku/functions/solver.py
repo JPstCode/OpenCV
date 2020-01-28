@@ -1,6 +1,5 @@
-import numpy as np
 
-
+# Combine sudoku based on predicted numbers and their location
 def combine_sudoku(locations,numbers):
 
     sudoku = []
@@ -16,7 +15,7 @@ def combine_sudoku(locations,numbers):
 
     return sudoku
 
-
+# Find next empty cell
 def find_empty(sudoku):
 
     for i in range(0,9):
@@ -27,8 +26,8 @@ def find_empty(sudoku):
     return None
 
 
+# Check if number is valid to use
 def valid(sudoku,number,pos):
-
 
     #Check row
     for i in range(len(sudoku[0])):
@@ -50,7 +49,7 @@ def valid(sudoku,number,pos):
 
     return True
 
-
+# Call until the sudoku is solved or no solution is found
 def solve(sudoku):
 
     find = find_empty(sudoku)
